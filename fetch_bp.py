@@ -143,12 +143,13 @@ def fetch_tabix_debug(junction_text, margin, bp_chr, bp_pos, bp_chr2 = None, bp_
     import pprint            
     pprint.pprint(excepts)
 
-def count_breakpoint(fetched, counted, header = False, comment = "#"):
+def __count_breakpoint(fetched, counted, header = False, comment = "#"):
     
     f_bp = open(counted, "w")
     
     long_reads = 0
     last_key = ""
+    data = {}
     for row in open(fetched).readlines():
         if row.startswith(comment):
             continue
@@ -158,7 +159,7 @@ def count_breakpoint(fetched, counted, header = False, comment = "#"):
             continue
         
         if header:
-            f_bp.write("Chr_1\tPos_1\tDir_1\tChr_2\tPos_2\tDir_2\tVariant_Type\tJudgment\n")
+            f_bp.write("Chr_1\tPos_1\tDir_1\tChr_2\tPos_2\tDir_2\tVariant_Type\tReadCount\n")
             header = False
             continue
         
@@ -167,66 +168,89 @@ def count_breakpoint(fetched, counted, header = False, comment = "#"):
             last_key = bp_key
             
         elif bp_key != last_key:
-            judgement = False
-            if long_reads > 2:
-                judgement = True
-                
-            f_bp.write("{key}\t{j}\n".format(key = last_key, j = judgement))
+            f_bp.write("{key}\t{j}\n".format(key = last_key, j = long_reads))
+            data[last_key] = long_reads
+            
             long_reads = 0
             last_key = bp_key
-        
-        if len(items) > 6:
+            
+        if len(items) > 8:
             long_reads += 1
     
-    judgement = False
-    if long_reads > 2:
-        judgement = True
+    f_bp.write("{key}\t{j}\n".format(key = last_key, j = long_reads))
+    data[last_key] = long_reads
+    
+    f_bp.close()
+    
+    return data
+
+def count_breakpoint(input_bp, fetched_tumor, fetched_normal, counted, header = False, comment = "#"):
+    
+    data_tumor = __count_breakpoint(fetched_tumor, counted + ".tumor", header = header, comment = comment)
+    data_normal = __count_breakpoint(fetched_normal, counted + ".normal", header = header, comment = comment)
+                       
+    f_bp = open(counted, "w")
+    
+    for row in open(input_bp).readlines():
+        if row.startswith(comment):
+            continue
         
-    f_bp.write("{key}\t{j}\n".format(key = last_key, j = judgement))
+        items = row.rstrip("\n").split("\t")
+        if len(items) < 1:
+            continue
+        
+        if header:
+            f_bp.write("{header}\ttumor_reads\tnormal_reads\n".format(header = "\t".join(items)))
+            header = False
+            continue
+        
+        bp_key = "\t".join(items[0:6] + [items[7]])
+        f_bp.write("{data}\t{i}\t{j}\n".format(data = "\t".join(items), i = data_tumor[bp_key], j = data_normal[bp_key]))
         
     f_bp.close()
     
 def main(args):
     
-    os.makedirs(os.path.dirname(args.parsed_file), exist_ok = True)
+    os.makedirs(os.path.dirname(args.output_prefix), exist_ok = True)
     
-    if os.path.exists(args.parsed_file + ".tbi"):
-        
-        t = time.time()
-        print ("[%s] (%.3f) start parse_junction_from_bam." % (datetime.datetime.now(), 0))
-        fetch_breakpoint(args.input_bp, 
-                         args.parsed_file, 
-                         output_bp = args.output_prefix + ".txt", 
-                         margin = [args.margin, args.margin], 
-                         header = True, 
-                         comment = "#")
-        print ("[%s] (%.3f) end fetch_breakpoint." % (datetime.datetime.now(), (time.time()-t)))
-        count_breakpoint(fetched = args.output_prefix + ".txt", 
-                         counted = args.output_prefix + ".count.txt",
-                         header = True,
-                         comment = "#")
-        print ("[%s] (%.3f) end count_breakpoint." % (datetime.datetime.now(), (time.time()-t)))
-        
-    else:
-        print("%s.tbi is not exists." % (args.parsed_file))
+    if not os.path.exists(args.parsed_file_tumor + ".tbi"):
+        print("%s.tbi is not exists." % (args.parsed_file_tumor))
         return 1
+    
+    if not os.path.exists(args.parsed_file_normal + ".tbi"):
+        print("%s.tbi is not exists." % (args.parsed_file_normal))
+        return 1
+    
+    t = time.time()
+    print ("[%s] (%.3f) start parse_junction_from_bam." % (datetime.datetime.now(), 0))
+    fetch_breakpoint(args.input_bp, 
+                     args.parsed_file_tumor, 
+                     output_bp = args.output_prefix + ".tumor.txt", 
+                     margin = [args.margin, args.margin], 
+                     header = True, 
+                     comment = "#")
+    
+    fetch_breakpoint(args.input_bp, 
+                     args.parsed_file_normal, 
+                     output_bp = args.output_prefix + ".normal.txt", 
+                     margin = [args.margin, args.margin], 
+                     header = True, 
+                     comment = "#")
+    
+    print ("[%s] (%.3f) end fetch_breakpoint." % (datetime.datetime.now(), (time.time()-t)))
+    count_breakpoint(args.input_bp,
+                     fetched_tumor = args.output_prefix + ".tumor.txt", 
+                     fetched_normal = args.output_prefix + ".normal.txt", 
+                     counted = args.output_prefix + ".count.txt",
+                     header = True,
+                     comment = "#")
+    
+    print ("[%s] (%.3f) end count_breakpoint." % (datetime.datetime.now(), (time.time()-t)))
     
     return 0
 
 if __name__ == "__main__":
     pass
-"""
-    if True:
-        output_prefix = "./20190423/"
-        input_bp = "./RERF-LC-KJ.genomonSV.result.filt.txt"
-        src_bp_tbx =  output_prefix + "junction.sort.gz"
-
-        fetch_breakpoint(input_bp, output_prefix + "junction.sort.gz", output_bp = output_prefix + "genomon.fetch.txt", margin = [30, 30], header = True, comment = "#")
-        #fetch_breakpoint(input_bp, output_prefix + "junction.sort.gz", output_bp = output_prefix + "genomon.fetch.50.50.txt", margin = [50, 50], header = True, comment = "#")
-        #fetch_breakpoint(input_bp, output_prefix + "junction.sort.gz", output_bp = output_prefix + "genomon.fetch.100.100.txt", margin = [100, 100], header = True, comment = "#")
-
-    if False:
-        junction_file="./20190423/junction.sort.txt"
-        margin = 100
-        fetch_tabix_debug(junction_file, margin, "11", 108077833)
-"""
+    
+    #__count_breakpoint("./output/genomon.fetch3.normal.txt", "./output/genomon.fetch4.count.txt")
+                       

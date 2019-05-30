@@ -9,7 +9,7 @@ sudo apt-get install -y zlib1g-dev libbz2-dev liblzma-dev
 
 install library for samtools
 ```
-sudo apt-get install -y libncurses5-dev`
+sudo apt-get install -y libncurses5-dev
 ```
 
  - htslib 1.9
@@ -33,12 +33,11 @@ git clone this repository
 minimap2 によりアラインメントされたbamを使用すること
 
 ```
-python ./run-nanomon-sv.py parse -i ./minimap2.bam -o ./output/ 
+python ./run-nanomon-sv.py parse -i ./examples/PromethION_RERF-LC-KJ.mini.bam -o ./output/
 ```
 
 2. 1. で作成されたブレークポイントと別途用意したブレークポイントを比較する
 
 ```
-mkdir -p output
-python ./run-nanomon-sv.py fetch --input_bp xxx.genomonSV.result.filt.txt --parsed_file xxx.junction.sort.gz --output_prefix ./output/genomon.fetch
+python ./run-nanomon-sv.py fetch -i ./examples/RERF-LC-KJ.genomonSV.result.filt.txt -t ./examples/tumor.junction.sort.gz -n ./examples/normal.junction.sort.gz -o ./output/genomon.fetch2
 ```

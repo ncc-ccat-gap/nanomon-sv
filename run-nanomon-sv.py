@@ -44,7 +44,8 @@ def main():
     # fetch break-point
     fetch_parser = subparsers.add_parser("fetch", help = "parse junction")
     fetch_parser.add_argument("-i", "--input_bp", metavar = "path/to/breakpoints.txt", help = "input file", type = str)
-    fetch_parser.add_argument("-p", "--parsed_file", metavar = "path/to/xxx.junction.sort.gz", help = "parsed directory", type = str)
+    fetch_parser.add_argument("-t", "--parsed_file_tumor", metavar = "path/to/tumor/xxx.junction.sort.gz", help = "parsed file", type = str)
+    fetch_parser.add_argument("-n", "--parsed_file_normal", metavar = "path/to/normal/xxx.junction.sort.gz", help = "parsed file", type = str)
     fetch_parser.add_argument("-o", "--output_prefix", metavar = "path/to/output-dir/xxx.fetch", help = "output-directory or prefix", type = str)
     fetch_parser.add_argument("--margin", metavar = 30, help = "fetch margin size (bps)", type = int, default = 30)
     
